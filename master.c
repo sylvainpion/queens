@@ -2,7 +2,7 @@
 		 * Maitre du calcul du probleme des N reines *
 		 *********************************************/
 
-/* $Id: master.c,v 1.9 1996/06/24 19:44:46 syl Exp syl $ */
+/* $Id: master.c,v 1.10 1996/06/24 23:30:13 syl Exp jo $ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,7 +19,6 @@
 
 #include "algo.h"    /* juste pour RG et RG_FULL */
 #include "rezo.h"
-#include "machines.h"
 
 #ifndef MACHINES
   #define MACHINES 1
@@ -29,31 +28,38 @@
   #define RG_MASTER (RG/5)
 #endif
 
+/* nb max de machines */
+#ifndef MACHINES
+  #define MACHINES 100
+#endif
+
 #define MODULO 65536
 
+/* Pour les decomptes */
 static unsigned int nb0 = 0;
 static unsigned int nb1 = 0;
 static unsigned int nb2 = 0;
 
+/* gestion des machines et des calculs a faire... */
 static int niveau = 1;
 static int etat[50][4];
 static int nombre_machines=0;
 static unsigned int calcul_en_cours[MACHINES][3];
-static unsigned int *calcul_a_refaire[MACHINES];
+static unsigned int calcul_a_refaire[MACHINES*10][3];
 static int calcul_bidon[3];
 static int to_redo = 0;
 
 static int fini = 0;
 static int fini_count = 0;
 
+/* les info sur les machines */
 int fd[MACHINES];
+int soc_princ;
 int ok[MACHINES];
 int fini_machine[MACHINES];
-struct sockaddr_in saddr;
-struct sockaddr_in myaddr;
-struct hostent *hp;
+char machines[MACHINES][100];
 
-/* tentative de gestion des pb des fils... */
+/* tentative de gestion des pb des clients... */
 static void handle_pipe(int nosig)
 {
   fprintf(stderr," Un pb de socket ... :-((( \n");
@@ -61,6 +67,7 @@ static void handle_pipe(int nosig)
   signal(SIGPIPE,handle_pipe);
 }
 
+void accept_connection();
 
 int pipo_next ()
 {
@@ -99,6 +106,7 @@ int pipo_next ()
     return 0;
 }
 
+/* appelee quand une connection bugue */
 void mort_client(int ma)
 {
      int i;
@@ -109,12 +117,14 @@ void mort_client(int ma)
      /* pour faire recommencer le meme... */
      printf ("%s nous a quittee..., il reste %d machines.\n",machines[ma],
        nombre_machines);
-     calcul_a_refaire[to_redo]=calcul_en_cours[ma];
+     /* on stoque le message a renvoyer a une machine saine... */
+     memcpy(calcul_a_refaire[to_redo],calcul_en_cours[ma],3*sizeof(int));
      to_redo++;
      for (i=0;i<MACHINES;i++)
      {
         if (fini_machine[i]&& ok[i])
         {
+            /* on veut reveiller des machines pour finir le calcul... */
             fini_count--;
             fini_machine[i]=0;
             fprintf(stderr,"Je reveille %s...\n",machines[i]);
@@ -191,22 +201,19 @@ void itere_pipo ()
 
    /* relance des calculs quand il y en a besoin */
 
-   if(nombre_machines==0)
-   {
-      fprintf(stderr,"Faut pas se foutre du monde... Je suis le MAITRE,\n");
-      fprintf(stderr,"je ne vais quand meme pas bosser...\n");
-      exit(-1);
-   }
-   while (fini_count < nombre_machines)
+   while ((fini_count < nombre_machines)||(fini==0))
    {
       FD_ZERO (&rd);
       for(i=0; i < MACHINES; i++)
         if(ok[i])
 	  FD_SET (fd[i], &rd);
+      FD_SET (soc_princ, &rd);
 
       /* on attend qu'un des esclaves dise qqchose... */
 
       select (256, &rd, 0, 0, 0);
+      if(FD_ISSET(soc_princ,&rd))
+         accept_connection();
       for (i=0; i < MACHINES; i++)
          if ((FD_ISSET (fd[i], &rd))&& (ok[i]))
          {
@@ -235,72 +242,107 @@ void itere_pipo ()
 	    }
 	 };
    };
-   if(nombre_machines==0)
-   { fprintf(stderr, "Y'a plus personne pour bosser\n");
+}
+
+void init()
+{
+  signal(SIGPIPE,handle_pipe);
+  calcul_bidon[0]=calcul_bidon[1]=calcul_bidon[2]=htonl(RG_FULL);
+}
+
+void accept_connection()
+{
+  int i;
+  int un=1;
+  int numero=0;
+  static struct sockaddr_in lui;
+  static struct hostent *luient;
+  static int l=sizeof (lui);
+
+  for(i=0;i<MACHINES;i++)
+  {
+    if (!ok[i]) {numero=i; break; }
+  }
+  if (ok[numero])
+  {
+    fprintf(stderr,"J'ai atteint le nombre maximum de clients... (%d) \n",
+       MACHINES);
+    return;
+  }
+  fd[numero]= accept(soc_princ, (struct sockaddr *) &lui, &l);
+  if (setsockopt (fd[numero],SOL_SOCKET,SO_KEEPALIVE,&un,sizeof(int)) < 0) {
+       perror ("setsockopt");
+       return;
+  };
+  luient = gethostbyaddr ((char *) & (lui.sin_addr.s_addr),
+          sizeof(lui.sin_addr.s_addr),AF_INET);
+	     
+  if(!luient)
+  {
+     fprintf(stderr,"Je ne sais pas qui se connecte...\n");
+     strncpy(machines[numero],"???",sizeof(machines[numero]));
+  } else
+  {
+     printf("Connexion de %s\n",luient->h_name);
+     strncpy(machines[numero],luient->h_name,sizeof(machines[numero]));
+  }
+  {
+       unsigned short int sonrg;
+       read (fd[numero], &sonrg, sizeof(unsigned short int));
+       if (ntohs(sonrg) != RG)
+       {
+         fprintf(stderr," Le client sur %s a un RG de %d et moi de %d\n",
+	         machines[numero], ntohs (sonrg), RG);
+         close(fd[numero]);
+         return;
+       }
+  };
+
+  ok[numero]=1;
+  fini_machine[numero]=0;
+  nombre_machines++;
+  /* on la fait demarrer... */
+  write(fd[numero],calcul_bidon,3*sizeof(int));
+}
+
+void init_rezo()
+{
+  int un=1;
+  struct sockaddr_in myaddr;
+
+  memset (&myaddr, 0, sizeof (struct sockaddr_in));
+  
+  myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+  myaddr.sin_port = htons(PORT);
+  myaddr.sin_family = AF_INET;
+
+  if ((soc_princ = socket (PF_INET, SOCK_STREAM, 0)) < 0) {
+      perror ("socket");
       exit(1);
-   }
+  };
+  
+
+  if (setsockopt (soc_princ,SOL_SOCKET,SO_REUSEADDR,&un,sizeof(int))< 0) {
+       perror ("setsockopt");
+       exit(1);
+  };
+
+  if (bind (soc_princ, (struct sockaddr *) &myaddr, sizeof (myaddr)) < 0) {
+    perror ("bind");
+    exit (1);
+  };
+
+  if (listen (soc_princ, 5) < 0) {
+    perror ("listen");
+    exit (1);
+  };
+  printf("Attente de connections port :%d\n",PORT);
 }
 
 int main ()
 {
-  int i;
-  int un=1;
-
-  signal(SIGPIPE,handle_pipe);
-
-  calcul_bidon[0]=calcul_bidon[1]=calcul_bidon[2]=htonl(RG_FULL);
-  memset (&saddr, 0, sizeof (struct sockaddr_in));
-  memset (&myaddr, 0, sizeof (struct sockaddr_in));
-
-  for(i=0; i<MACHINES; i++)
-  {
-     if ((hp = gethostbyname (machines[i])) == NULL) {
-       saddr.sin_addr.s_addr = inet_addr (machines[i]);
-       if (saddr.sin_addr.s_addr == -1) {
-	 fprintf (stderr, "Unknown host: %s\n", machines[i]);
-         continue;
-       };
-     }
-     else
-       saddr.sin_addr = *(struct in_addr *) (hp->h_addr_list[0]);
-
-     saddr.sin_port = htons(PORT);
-     saddr.sin_family = AF_INET;
-
-     myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-     myaddr.sin_port = 0;
-     myaddr.sin_family = AF_INET;
-
-     if ((fd[i] = socket (PF_INET, SOCK_STREAM, 0)) < 0) {
-       perror ("socket");
-         continue;
-     };
-     if (setsockopt (fd[i],SOL_SOCKET,SO_KEEPALIVE,&un,sizeof(int)) < 0) {
-       perror ("setsockopt");
-         continue;
-     };
-     if (connect (fd[i], (struct sockaddr *) &saddr, sizeof (saddr))) {
-       fprintf(stderr," Connection a : %s\n",machines[i]);
-       perror ("connection au serveur...");
-         continue;
-     };
-     {
-       unsigned short int sonrg;
-       read (fd[i], &sonrg, sizeof(unsigned short int));
-       if (ntohs(sonrg) != RG)
-       {
-         fprintf(stderr," Le client sur %s a un RG de %d et moi de %d\n",
-	         machines[i], ntohs (sonrg), RG);
-         close(fd[i]);
-         continue;
-       }
-     };
-     printf("%s est avec nous...\n",machines[i]);
-     nombre_machines++;
-     fini_machine[i]=0;
-     ok[i]=1;
-  };
-
+  init();
+  init_rezo();
   itere_pipo ();
   printf ("%d reines -> 2 * (%d + (%d * %d )) sols\n",
           RG, nb1, nb2, MODULO);
