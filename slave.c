@@ -21,6 +21,7 @@ struct sockaddr_in saddr;
 int main ()
 {
   int ns;
+  int un=1;
   unsigned short rgpt = htons(RG);
   unsigned int buf[10];
   struct sockaddr_in lui;
@@ -35,6 +36,11 @@ int main ()
     perror ("socket");
     exit (1);
   };
+
+     if (setsockopt (fd[i],SOL_SOCKET,SO_REUSEADDR,&un,1) < 0) {
+       perror ("setsockopt");
+         continue;
+     };
 
   if (bind (fd, (struct sockaddr *) &saddr, sizeof (saddr)) < 0) {
     perror ("bind");
