@@ -48,6 +48,8 @@ main()
   printf ("Attente de connections, port %d\n", PORT);
   ns = accept (fd, (struct sockaddr *) &lui, &l);
   printf ("Connection !!!\n");
+  buf[0]=htonl(RG);
+  write(ns,buf,sizeof(long));
   for (;;)
   {
      read (ns, buf, 4*sizeof (long));
