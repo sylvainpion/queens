@@ -2,7 +2,7 @@
 		 * Maitre du calcul du probleme des N reines *
 		 *********************************************/
 
-/* $Id:$ */
+/* $Id: master.c,v 1.9 1996/06/24 19:44:46 syl Exp syl $ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -275,7 +275,7 @@ int main ()
        perror ("socket");
          continue;
      };
-     if (setsockopt (fd[i],SOL_SOCKET,SO_KEEPALIVE,&un,1) < 0) {
+     if (setsockopt (fd[i],SOL_SOCKET,SO_KEEPALIVE,&un,sizeof(int)) < 0) {
        perror ("setsockopt");
          continue;
      };
