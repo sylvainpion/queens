@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -27,9 +28,9 @@
 
 #define MODULO 65536
 
-static long nb0 = 0;
-static long nb1 = 0;
-static long nb2 = 0;
+static unsigned int nb0 = 0;
+static unsigned int nb1 = 0;
+static unsigned int nb2 = 0;
 
 static int niveau = 1;
 static int etat[50][4];
@@ -82,13 +83,18 @@ int pipo_next ()
 void grand_pipo (int ma)
 {
   int res;
-  long buf[3];
+  unsigned int buf[3];
   int i;
 
   /* regarde s'il reste des calculs a donner,
    * et compte les machines qui ont fini      */
 
-  if (fini>0) { fini++; return;};
+  if (fini>0)
+  {
+    fini++;
+    printf ("             %d a termine.\n", ma);
+    return;
+  };
 
   /* attend de trouver qqchose d'interessant
    * ie la fin des calculs, ou un calcul a faire */
@@ -100,7 +106,7 @@ void grand_pipo (int ma)
 
   for (i=0; i < 3; i++)
     buf[i] = htonl (etat[niveau][i]);
-  write (fd[ma], buf, 3 * sizeof (long));
+  write (fd[ma], buf, 3 * sizeof (unsigned int));
   printf ("(%2d) %d %d %d %d %d %d %d\n", ma, etat[0][3], etat[1][3], 
           etat[2][3], etat[3][3], etat[4][3], etat[5][3], etat[6][3]);
 
@@ -137,14 +143,10 @@ void itere_pipo ()
       for (i=0; i < MACHINES; i++)
          if (FD_ISSET (fd[i], &rd))
          {
-	    read (fd[i], &nb0, sizeof (long));
-
-            /* on recupere le resultat */
-
+	    read (fd[i], &nb0, sizeof (unsigned int));
 	    nb1 += ntohl (nb0);
             nb2 += nb1 / MODULO;
 	    nb1 = nb1 % MODULO;
-/* if ((signed) nb1 < 0) { nb1 <<= 1; nb1 >>= 1; nb2++;}; */
 	    grand_pipo (i);
 	 };
    };
@@ -185,15 +187,16 @@ int main ()
        exit (-1);
      };
      {
-       long sonrg;
-       read(fd[i],&sonrg,sizeof(long));
-       if (ntohl(sonrg) != RG)
+       unsigned short int sonrg;
+       read (fd[i], &sonrg, sizeof(unsigned short int));
+       if (ntohs(sonrg) != RG)
          fprintf(stderr," Le client sur %s a un RG de %d et moi de %d\n",
-	         machines[i], ntohl (sonrg), RG);
+	         machines[i], ntohs (sonrg), RG);
      };
   };
 
   itere_pipo ();
-  printf ("%d reines -> 2 * (%d + (%d * 2^%d )) sols\n",
+  printf ("%d reines -> 2 * (%d + (%d * %d )) sols\n",
           RG, nb1, nb2, MODULO);
+  return 0;
 }
