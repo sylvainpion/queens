@@ -2,7 +2,7 @@
 		 * Maitre du calcul du probleme des N reines *
 		 *********************************************/
 
-/* $Id: master.c,v 1.11 1996/06/25 00:39:05 jo Exp jo $ */
+/* $Id: master.c,v 1.12 1996/06/25 00:52:18 jo Exp jo $ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,8 +20,13 @@
 #include "algo.h"    /* juste pour RG et RG_FULL */
 #include "rezo.h"
 
+#define DBG_LVL 3
+/* 0 -> rien, 1-> arrivee,depart de machines, 2-> fin/reveils
+3->avancement du calcul */
+
+
 #ifndef MACHINES
-  #define MACHINES 100
+  #define MACHINES 150
 #endif
 
 #ifndef RG_MASTER
@@ -63,8 +68,10 @@ char machines[MACHINES][100];
 /* tentative de gestion des pb des clients... */
 static void handle_pipe(int nosig)
 {
+#if DBG_LVL > 0
   fprintf(stderr," Un pb de socket ... :-((( \n");
   fprintf(stderr, " J'ignore le signal... \n");
+#endif
   signal(SIGPIPE,handle_pipe);
 }
 
@@ -111,13 +118,17 @@ int pipo_next ()
 void mort_client(int ma)
 {
      int i;
+#if DBG_LVL > 0
      perror("Ecriture :");
+#endif
      ok[ma]=0;
      nombre_machines --;
      close(fd[ma]);
      /* pour faire recommencer le meme... */
+#if DBG_LVL >0
      printf ("%s nous a quittee..., il reste %d machines.\n",machines[ma],
        nombre_machines);
+#endif
      /* on stoque le message a renvoyer a une machine saine... */
      memcpy(calcul_a_refaire[to_redo],calcul_en_cours[ma],3*sizeof(int));
      to_redo++;
@@ -128,12 +139,19 @@ void mort_client(int ma)
             /* on veut reveiller des machines pour finir le calcul... */
             fini_count--;
             fini_machine[i]=0;
+#if DBG_LVL > 0
             fprintf(stderr,"Je reveille %s...\n",machines[i]);
+#endif
+#if DBG_LVL > 1
+            printf("Je reveille %s...\n",machines[i]);
+#endif
             memcpy(calcul_en_cours[i],calcul_bidon,3*sizeof(int));
             if(write(fd[i],calcul_en_cours[i],
               3*sizeof(int)) !=3*sizeof(int))
             {
-               printf("Ca va mal\n");
+#if DBG_LVL > 0
+               fprintf(stderr,"Ca va mal\n");
+#endif
                mort_client(i); /* la on deprime un peu... */
             }
         }
@@ -153,7 +171,9 @@ void grand_pipo (int ma)
   {
     fini_count++;
     fini_machine[ma]=1;
-    printf ("             %d a termine.\n", ma);
+#if DBG_LVL > 1
+    printf ("             %s a termine.\n", machines[ma]);
+#endif
     return;
   };
 
@@ -163,7 +183,9 @@ void grand_pipo (int ma)
   while ((res = pipo_next ())==0);
   if (res == -1)
   {fini_machine[ma]=1;fini = 1;fini_count=1;
-    printf ("             %d a termine.\n", ma);
+#if DBG_LVL > 1
+    printf ("             %s a termine.\n", machines[ma]);
+#endif
     return;
   }
 
@@ -177,8 +199,10 @@ void grand_pipo (int ma)
      /* pour faire recommencer le meme... */
      mort_client(ma);
   }
-  printf ("(%2d) %d %d %d %d %d %d %d\n", ma, etat[0][3], etat[1][3], 
-          etat[2][3], etat[3][3], etat[4][3], etat[5][3], etat[6][3]);
+#if DBG_LVL > 2
+  printf ("(%2d) %d %d %d %d %d %d %d\n", ma, etat[1][3], etat[2][3], 
+          etat[3][3], etat[4][3], etat[5][3], etat[6][3], etat[7][3]);
+#endif
 
   /* ce niveau a ete fait par le client.
    * Il faut donc redescendre */
@@ -226,7 +250,9 @@ void itere_pipo ()
 	       nb1 = nb1 % MODULO;
 	       if (to_redo >0)
 	       {
+#if DBG_LVL > 1
                   printf("Je relance un calcul... \n");
+#endif
 	          memcpy(calcul_en_cours[i],calcul_a_refaire[--to_redo],
 		    3 * sizeof(unsigned int));
 		  if(write(fd[i],calcul_en_cours[i],
@@ -285,7 +311,9 @@ void accept_connection()
      strncpy(machines[numero],"???",sizeof(machines[numero]));
   } else
   {
+#if DBG_LVL > 0
      printf("Connexion de %s\n",luient->h_name);
+#endif
      strncpy(machines[numero],luient->h_name,sizeof(machines[numero]));
   }
   {
@@ -295,6 +323,9 @@ void accept_connection()
        {
          fprintf(stderr," Le client sur %s a un RG de %d et moi de %d\n",
 	         machines[numero], ntohs (sonrg), RG);
+#if DBG_LVL > 0
+         printf(" Refusee... Mauvais RG\n");
+#endif
          close(fd[numero]);
          return;
        }
