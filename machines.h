@@ -1,4 +1,4 @@
-#define MACHINES 18  /* 37 */
+#define MACHINES 5 /* 18  /* 37 */
 
 char machines[][100]={ 
 "holiday",
