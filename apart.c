@@ -3,7 +3,7 @@
 
 #include "algo.h"
 
-#define MODULO 65536
+#define MODULO 16777216
 
 static unsigned int nb1 = 0;
 static unsigned int nb2 = 0;
