@@ -2,7 +2,7 @@
 		 * Maitre du calcul du probleme des N reines *
 		 *********************************************/
 
-/* $Id: master.c,v 1.10 1996/06/24 23:30:13 syl Exp jo $ */
+/* $Id: master.c,v 1.11 1996/06/25 00:39:05 jo Exp jo $ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,7 +21,7 @@
 #include "rezo.h"
 
 #ifndef MACHINES
-  #define MACHINES 1
+  #define MACHINES 100
 #endif
 
 #ifndef RG_MASTER
@@ -33,7 +33,8 @@
   #define MACHINES 100
 #endif
 
-#define MODULO 65536
+#define MODULO 16777216
+
 
 /* Pour les decomptes */
 static unsigned int nb0 = 0;
@@ -267,6 +268,7 @@ void accept_connection()
   {
     fprintf(stderr,"J'ai atteint le nombre maximum de clients... (%d) \n",
        MACHINES);
+    close(accept(soc_princ, (struct sockaddr *) &lui, &l));
     return;
   }
   fd[numero]= accept(soc_princ, (struct sockaddr *) &lui, &l);
