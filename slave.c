@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -17,11 +18,11 @@
 int fd;
 struct sockaddr_in saddr;
 
-main()
+int main ()
 {
   int ns;
-  unsigned long buf[10];
-  struct hostent *luient;
+  unsigned short rgpt = htons(RG);
+  unsigned int buf[10];
   struct sockaddr_in lui;
   int l = sizeof (lui);
 
@@ -48,14 +49,14 @@ main()
   printf ("Attente de connections, port %d\n", PORT);
   ns = accept (fd, (struct sockaddr *) &lui, &l);
   printf ("Connection !!!\n");
-  buf[0] = htonl(RG);
-  write (ns, buf, sizeof (long));
+  write (ns, &rgpt, sizeof (unsigned short int));
+
   for (;;)
   {
-     read (ns, buf, 4*sizeof (long));
+     read (ns, buf, 4*sizeof (unsigned int));
      nb = 0;
      pipo_str (ntohl (buf[0]), ntohl (buf[1]), ntohl (buf[2]));
      nb = htonl (nb);
-     write (ns, &nb, sizeof (long));
+     write (ns, &nb, sizeof (unsigned int));
   };
 }
