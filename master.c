@@ -175,6 +175,15 @@ main()
        perror ("connection au serveur...");
        exit (-1);
      };
+     {
+       long sonrg;
+       read(fd[i],&sonrg,sizeof(long));
+       if(ntohl(sonrg) != RG)
+       {
+          fprintf(stderr," Le client sur %s a un RG de %d et moi de %d\n",
+	          machines[i],ntohl(sonrg),RG);
+       }
+     }
   };
 
    itere_pipo ();
