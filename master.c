@@ -111,29 +111,28 @@ fini */
 
 void itere_pipo ()
 {
-   int res = 1;
    int i;
-   fd_set rd, wr;
+   fd_set rd;
 
    etat[1][0] = etat[1][1] = etat[1][2] = 0;
    etat[1][3] = 1;
-   /* Lance un premier clacul sur chaque machine */
+   /* Lance un premier calcul sur chaque machine */
    for (i=0; i < MACHINES; i++)
       grand_pipo (i);
 
-   /* relance des claculs quand il y en a besoin */
+   /* relance des calculs quand il y en a besoin */
    while (fini < MACHINES)
    {
       FD_ZERO (&rd);
       for(i=0; i < MACHINES; i++)
 	FD_SET (fd[i], &rd);
-      /* on attends qu'un des esclaves dise qqchose... */
+      /* on attend qu'un des esclaves dise qqchose... */
       select (256, &rd, 0, 0, 0);
       for (i=0; i < MACHINES; i++)
          if (FD_ISSET (fd[i], &rd))
          {
 	    read (fd[i], &nb0, sizeof (long));
-            /* on recupere le sesultat */
+            /* on recupere le resultat */
 	    nb1 += ntohl (nb0);
 	    if ((signed) nb1 < 0) { nb1 <<= 1; nb1 >>= 1; nb2++;};
 	    grand_pipo (i);
@@ -141,7 +140,7 @@ void itere_pipo ()
    };
 }
 
-main()
+int main ()
 {
   int i;
   memset (&saddr, 0, sizeof (struct sockaddr_in));
