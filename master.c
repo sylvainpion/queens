@@ -103,7 +103,7 @@ void mort_client(int ma)
      ok[ma]=0;
      nombre_machines --;
      /* pour faire recommencer le meme... */
-     printf ("%s nous a quittee..., il reste %d machines.",machines[ma],
+     printf ("%s nous a quittee..., il reste %d machines.\n",machines[ma],
        nombre_machines);
      calcul_a_refaire[to_redo]=calcul_en_cours[ma];
      to_redo++;
@@ -200,10 +200,6 @@ void itere_pipo ()
 
       /* on attend qu'un des esclaves dise qqchose... */
 
-      if(nombre_machines==0)
-      { fprintf(stderr, "Y'a plus personne pour bosser\n");
-        exit(1);
-      }
       select (256, &rd, 0, 0, 0);
       for (i=0; i < MACHINES; i++)
          if ((FD_ISSET (fd[i], &rd))&& (ok[i]))
@@ -233,6 +229,10 @@ void itere_pipo ()
 	    }
 	 };
    };
+   if(nombre_machines==0)
+   { fprintf(stderr, "Y'a plus personne pour bosser\n");
+      exit(1);
+   }
 }
 
 int main ()
