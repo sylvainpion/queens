@@ -13,6 +13,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <signal.h>
 
 #include "algo.h"    /* juste pour RG et RG_FULL */
 #include "rezo.h"
@@ -34,13 +35,28 @@ static unsigned int nb2 = 0;
 
 static int niveau = 1;
 static int etat[50][4];
+static int nombre_machines=0;
+static unsigned int calcul_en_cours[MACHINES][4];
+static unsigned int *calcul_a_refaire[MACHINES];
+static int calcul_bidon[] = {-1,-1,-1};
+static int to_redo = 0;
 
 static int fini = 0;
 
 int fd[MACHINES];
+int ok[MACHINES];
+int fini_machine[MACHINES];
 struct sockaddr_in saddr;
 struct sockaddr_in myaddr;
 struct hostent *hp;
+
+/* tentative de gestion des pb des fils... */
+static void handle_pipe(int nosig)
+{
+  fprintf(stderr," Un pb de socket ... :-((( \n");
+  fprintf(stderr, " J'ignore le signal... \n");
+  signal(SIGPIPE,handle_pipe);
+}
 
 
 int pipo_next ()
@@ -80,10 +96,38 @@ int pipo_next ()
     return 0;
 }
 
+void mort_client(int ma)
+{
+     int i;
+     perror("Ecriture :");
+     ok[ma]=0;
+     nombre_machines --;
+     /* pour faire recommencer le meme... */
+     printf ("%s nous a quittee..., il reste %d machines.",machines[ma],
+       nombre_machines);
+     calcul_a_refaire[to_redo]=calcul_en_cours[ma];
+     to_redo++;
+     for (i=0;i<MACHINES;i++)
+     {
+        if (fini_machine[i]&& ok[i])
+        {
+            fini--;
+            fini_machine[i]=0;
+            fprintf(stderr,"Je reveille %s...\n",machines[i]);
+            memcpy(calcul_en_cours[i],calcul_bidon,3*sizeof(int));
+            if(write(fd[i],calcul_bidon,
+              3*sizeof(int)) !=3*sizeof(int))
+            {
+               mort_client(i); /* la on deprime un peu... */
+            }
+        }
+     }
+}
+
+
 void grand_pipo (int ma)
 {
   int res;
-  unsigned int buf[3];
   int i;
 
   /* regarde s'il reste des calculs a donner,
@@ -92,6 +136,7 @@ void grand_pipo (int ma)
   if (fini>0)
   {
     fini++;
+    fini_machine[ma]=1;
     printf ("             %d a termine.\n", ma);
     return;
   };
@@ -100,13 +145,22 @@ void grand_pipo (int ma)
    * ie la fin des calculs, ou un calcul a faire */
 
   while ((res = pipo_next ())==0);
-  if (res == -1) {fini = 1; return;};
+  if (res == -1)
+  {fini_machine[ma]=0;fini = 1;
+    printf ("             %d a termine.\n", ma);
+    return;
+  }
 
   /* on convertit avant d'envoyer sur le rezo */
 
   for (i=0; i < 3; i++)
-    buf[i] = htonl (etat[niveau][i]);
-  write (fd[ma], buf, 3 * sizeof (unsigned int));
+    calcul_en_cours[ma][i] = htonl (etat[niveau][i]);
+  res = write (fd[ma], calcul_en_cours[ma], 3 * sizeof (unsigned int));
+  if (res != 3* sizeof(unsigned int))
+  {
+     /* pour faire recommencer le meme... */
+     mort_client(ma);
+  }
   printf ("(%2d) %d %d %d %d %d %d %d\n", ma, etat[0][3], etat[1][3], 
           etat[2][3], etat[3][3], etat[4][3], etat[5][3], etat[6][3]);
 
@@ -127,11 +181,18 @@ void itere_pipo ()
    /* Lance un premier calcul sur chaque machine */
 
    for (i=0; i < MACHINES; i++)
-      grand_pipo (i);
+      if(ok[i])
+         grand_pipo (i);
 
    /* relance des calculs quand il y en a besoin */
 
-   while (fini < MACHINES)
+   if(nombre_machines==0)
+   {
+      fprintf(stderr,"Faut pas se foutre du monde... Je suis le MAITRE,\n");
+      fprintf(stderr,"je ne vais quand meme pas bosser...\n");
+      exit(-1);
+   }
+   while (fini < nombre_machines)
    {
       FD_ZERO (&rd);
       for(i=0; i < MACHINES; i++)
@@ -139,15 +200,37 @@ void itere_pipo ()
 
       /* on attend qu'un des esclaves dise qqchose... */
 
+      if(nombre_machines==0)
+      { fprintf(stderr, "Y'a plus personne pour bosser\n");
+        exit(1);
+      }
       select (256, &rd, 0, 0, 0);
       for (i=0; i < MACHINES; i++)
-         if (FD_ISSET (fd[i], &rd))
+         if ((FD_ISSET (fd[i], &rd))&& (ok[i]))
          {
-	    read (fd[i], &nb0, sizeof (unsigned int));
-	    nb1 += ntohl (nb0);
-            nb2 += nb1 / MODULO;
-	    nb1 = nb1 % MODULO;
-	    grand_pipo (i);
+	    if(read (fd[i], &nb0, sizeof (unsigned int))==
+	         sizeof(unsigned int))
+	    {
+	       nb1 += ntohl (nb0);
+	       nb2 += nb1 / MODULO;
+	       nb1 = nb1 % MODULO;
+	       if (to_redo >0)
+	       {
+                  printf("Je relance un calcul...\n");
+	          memcpy(calcul_en_cours[i],calcul_a_refaire[--to_redo],
+		    3 * sizeof(unsigned int));
+		  if(write(fd[i],calcul_en_cours[i],
+		     3*sizeof(unsigned int)) != 3 * sizeof(unsigned int))
+		  {
+		     mort_client(i);
+		  }
+	       } else
+		  grand_pipo (i);
+            }
+	    else
+	    {
+	       mort_client(i);
+	    }
 	 };
    };
 }
@@ -155,6 +238,10 @@ void itere_pipo ()
 int main ()
 {
   int i;
+  int un=1;
+
+  signal(SIGPIPE,handle_pipe);
+
   memset (&saddr, 0, sizeof (struct sockaddr_in));
   memset (&myaddr, 0, sizeof (struct sockaddr_in));
 
@@ -164,7 +251,7 @@ int main ()
        saddr.sin_addr.s_addr = inet_addr (machines[i]);
        if (saddr.sin_addr.s_addr == -1) {
 	 fprintf (stderr, "Unknown host: %s\n", machines[i]);
-	 exit (1);
+         continue;
        };
      }
      else
@@ -179,20 +266,30 @@ int main ()
 
      if ((fd[i] = socket (PF_INET, SOCK_STREAM, 0)) < 0) {
        perror ("socket");
-       exit (1);
+         continue;
+     };
+     if (setsockopt (fd[i],SOL_SOCKET,SO_KEEPALIVE,&un,1) < 0) {
+       perror ("setsockopt");
+         continue;
      };
      if (connect (fd[i], (struct sockaddr *) &saddr, sizeof (saddr))) {
        fprintf(stderr," Connection a : %s\n",machines[i]);
        perror ("connection au serveur...");
-       exit (-1);
+         continue;
      };
      {
        unsigned short int sonrg;
        read (fd[i], &sonrg, sizeof(unsigned short int));
        if (ntohs(sonrg) != RG)
+       {
          fprintf(stderr," Le client sur %s a un RG de %d et moi de %d\n",
 	         machines[i], ntohs (sonrg), RG);
+         continue;
+       }
      };
+     printf("%s est avec nous...\n",machines[i]);
+     nombre_machines++;
+     ok[i]=1;
   };
 
   itere_pipo ();
