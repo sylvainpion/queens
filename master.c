@@ -25,6 +25,8 @@
   #define RG_MASTER (RG/5)
 #endif
 
+#define MODULO 65536
+
 static long nb0 = 0;
 static long nb1 = 0;
 static long nb2 = 0;
@@ -39,13 +41,6 @@ struct sockaddr_in saddr;
 struct sockaddr_in myaddr;
 struct hostent *hp;
 
-
-void mul2 ()
-{
-   nb1 <<= 1;
-   nb2 <<= 1;
-   if ((signed) nb1 < 0) { nb1 <<= 1; nb1 >>= 1; nb2++;};
-}
 
 int pipo_next ()
 {
@@ -90,22 +85,28 @@ void grand_pipo (int ma)
   long buf[3];
   int i;
 
-  /* regarde s'il reste des calculs a donner, et compte les machines qui ont
-fini */
+  /* regarde s'il reste des calculs a donner,
+   * et compte les machines qui ont fini      */
+
   if (fini>0) { fini++; return;};
 
-  /* attend de trouver qqchose d'interessant */
-  /* ie la fin des calculs, ou un calcul a faire */
+  /* attend de trouver qqchose d'interessant
+   * ie la fin des calculs, ou un calcul a faire */
+
   while ((res = pipo_next ())==0);
   if (res == -1) {fini = 1; return;};
 
   /* on convertit avant d'envoyer sur le rezo */
+
   for (i=0; i < 3; i++)
     buf[i] = htonl (etat[niveau][i]);
   write (fd[ma], buf, 3 * sizeof (long));
   printf ("(%2d) %d %d %d %d %d %d %d\n", ma, etat[0][3], etat[1][3], 
           etat[2][3], etat[3][3], etat[4][3], etat[5][3], etat[6][3]);
-  /* ce niveau a ete fait par le client. Il faut donc redescendre */
+
+  /* ce niveau a ete fait par le client.
+   * Il faut donc redescendre */
+
   niveau --;
 }
 
@@ -116,25 +117,34 @@ void itere_pipo ()
 
    etat[1][0] = etat[1][1] = etat[1][2] = 0;
    etat[1][3] = 1;
+
    /* Lance un premier calcul sur chaque machine */
+
    for (i=0; i < MACHINES; i++)
       grand_pipo (i);
 
    /* relance des calculs quand il y en a besoin */
+
    while (fini < MACHINES)
    {
       FD_ZERO (&rd);
       for(i=0; i < MACHINES; i++)
 	FD_SET (fd[i], &rd);
+
       /* on attend qu'un des esclaves dise qqchose... */
+
       select (256, &rd, 0, 0, 0);
       for (i=0; i < MACHINES; i++)
          if (FD_ISSET (fd[i], &rd))
          {
 	    read (fd[i], &nb0, sizeof (long));
+
             /* on recupere le resultat */
+
 	    nb1 += ntohl (nb0);
-	    if ((signed) nb1 < 0) { nb1 <<= 1; nb1 >>= 1; nb2++;};
+            nb2 += nb1 / MODULO;
+	    nb1 = nb1 % MODULO;
+/* if ((signed) nb1 < 0) { nb1 <<= 1; nb1 >>= 1; nb2++;}; */
 	    grand_pipo (i);
 	 };
    };
@@ -177,15 +187,13 @@ int main ()
      {
        long sonrg;
        read(fd[i],&sonrg,sizeof(long));
-       if(ntohl(sonrg) != RG)
-       {
-          fprintf(stderr," Le client sur %s a un RG de %d et moi de %d\n",
-	          machines[i],ntohl(sonrg),RG);
-       }
-     }
+       if (ntohl(sonrg) != RG)
+         fprintf(stderr," Le client sur %s a un RG de %d et moi de %d\n",
+	         machines[i], ntohl (sonrg), RG);
+     };
   };
 
-   itere_pipo ();
-   printf ("%d reines -> %d + (%d * 2^%d ) sols\n",
-	   RG, nb1, nb2, 8 * sizeof (long));
+  itere_pipo ();
+  printf ("%d reines -> 2 * (%d + (%d * 2^%d )) sols\n",
+          RG, nb1, nb2, MODULO);
 }
