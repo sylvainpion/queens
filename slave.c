@@ -37,7 +37,7 @@ int main ()
     exit (1);
   };
 
-     if (setsockopt (fd,SOL_SOCKET,SO_REUSEADDR,&un,1) < 0) {
+     if (setsockopt (fd,SOL_SOCKET,SO_REUSEADDR,&un,sizeof(int))< 0) {
        perror ("setsockopt");
        exit(1);
      };
