@@ -53,7 +53,7 @@ int main ()
 
   for (;;)
   {
-     read (ns, buf, 4*sizeof (unsigned int));
+     read (ns, buf, 3*sizeof (unsigned int));
      nb = 0;
      pipo_str (ntohl (buf[0]), ntohl (buf[1]), ntohl (buf[2]));
      nb = htonl (nb);
