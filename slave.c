@@ -37,9 +37,9 @@ int main ()
     exit (1);
   };
 
-     if (setsockopt (fd[i],SOL_SOCKET,SO_REUSEADDR,&un,1) < 0) {
+     if (setsockopt (fd,SOL_SOCKET,SO_REUSEADDR,&un,1) < 0) {
        perror ("setsockopt");
-         continue;
+       exit(1);
      };
 
   if (bind (fd, (struct sockaddr *) &saddr, sizeof (saddr)) < 0) {
