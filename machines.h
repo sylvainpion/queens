@@ -1,13 +1,14 @@
-#define MACHINES 5 /* 18  /* 37 */
+#define MACHINES 34
 
 char machines[][100]={ 
 "holiday",
 "moloch",
 "beorn",
-"nostromo",
+/* "nostromo", */
 "onouga",
 /* "darou", */
 /* "kremlin", */
+"zep",
 
 /* "sequoia", */
 "tabac",
@@ -26,8 +27,10 @@ char machines[][100]={
 "chaland",
 "jonque",
 
-/* "aviso", 
-"triere", */
+"aviso", 
+"triere",
+
+"voilier",
 
 /* "vedette",
 "gondole", */
