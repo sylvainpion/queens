@@ -2,6 +2,8 @@
 		 * Maitre du calcul du probleme des N reines *
 		 *********************************************/
 
+/* $Id:$ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
