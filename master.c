@@ -36,12 +36,13 @@ static unsigned int nb2 = 0;
 static int niveau = 1;
 static int etat[50][4];
 static int nombre_machines=0;
-static unsigned int calcul_en_cours[MACHINES][4];
+static unsigned int calcul_en_cours[MACHINES][3];
 static unsigned int *calcul_a_refaire[MACHINES];
-static int calcul_bidon[] = {-1,-1,-1};
+static int calcul_bidon[3];
 static int to_redo = 0;
 
 static int fini = 0;
+static int fini_count = 0;
 
 int fd[MACHINES];
 int ok[MACHINES];
@@ -102,6 +103,7 @@ void mort_client(int ma)
      perror("Ecriture :");
      ok[ma]=0;
      nombre_machines --;
+     close(fd[ma]);
      /* pour faire recommencer le meme... */
      printf ("%s nous a quittee..., il reste %d machines.\n",machines[ma],
        nombre_machines);
@@ -111,13 +113,14 @@ void mort_client(int ma)
      {
         if (fini_machine[i]&& ok[i])
         {
-            fini--;
+            fini_count--;
             fini_machine[i]=0;
             fprintf(stderr,"Je reveille %s...\n",machines[i]);
             memcpy(calcul_en_cours[i],calcul_bidon,3*sizeof(int));
-            if(write(fd[i],calcul_bidon,
+            if(write(fd[i],calcul_en_cours[i],
               3*sizeof(int)) !=3*sizeof(int))
             {
+               printf("Ca va mal\n");
                mort_client(i); /* la on deprime un peu... */
             }
         }
@@ -133,9 +136,9 @@ void grand_pipo (int ma)
   /* regarde s'il reste des calculs a donner,
    * et compte les machines qui ont fini      */
 
-  if (fini>0)
+  if (fini)
   {
-    fini++;
+    fini_count++;
     fini_machine[ma]=1;
     printf ("             %d a termine.\n", ma);
     return;
@@ -146,7 +149,7 @@ void grand_pipo (int ma)
 
   while ((res = pipo_next ())==0);
   if (res == -1)
-  {fini_machine[ma]=0;fini = 1;
+  {fini_machine[ma]=1;fini = 1;fini_count=1;
     printf ("             %d a termine.\n", ma);
     return;
   }
@@ -192,11 +195,12 @@ void itere_pipo ()
       fprintf(stderr,"je ne vais quand meme pas bosser...\n");
       exit(-1);
    }
-   while (fini < nombre_machines)
+   while (fini_count < nombre_machines)
    {
       FD_ZERO (&rd);
       for(i=0; i < MACHINES; i++)
-	FD_SET (fd[i], &rd);
+        if(ok[i])
+	  FD_SET (fd[i], &rd);
 
       /* on attend qu'un des esclaves dise qqchose... */
 
@@ -212,7 +216,7 @@ void itere_pipo ()
 	       nb1 = nb1 % MODULO;
 	       if (to_redo >0)
 	       {
-                  printf("Je relance un calcul...\n");
+                  printf("Je relance un calcul... \n");
 	          memcpy(calcul_en_cours[i],calcul_a_refaire[--to_redo],
 		    3 * sizeof(unsigned int));
 		  if(write(fd[i],calcul_en_cours[i],
@@ -242,6 +246,7 @@ int main ()
 
   signal(SIGPIPE,handle_pipe);
 
+  calcul_bidon[0]=calcul_bidon[1]=calcul_bidon[2]=htonl(RG_FULL);
   memset (&saddr, 0, sizeof (struct sockaddr_in));
   memset (&myaddr, 0, sizeof (struct sockaddr_in));
 
@@ -284,11 +289,13 @@ int main ()
        {
          fprintf(stderr," Le client sur %s a un RG de %d et moi de %d\n",
 	         machines[i], ntohs (sonrg), RG);
+         close(fd[i]);
          continue;
        }
      };
      printf("%s est avec nous...\n",machines[i]);
      nombre_machines++;
+     fini_machine[i]=0;
      ok[i]=1;
   };
 
