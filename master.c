@@ -297,8 +297,7 @@ void accept_connection()
   }
   if (ok[numero])
   {
-    fprintf(stdout,"LVL0: J'ai atteint le nombre maximum de clients... (%d) 
-\n",
+    fprintf(stdout,"LVL0: J\'ai atteint le nombre maximum de clients... (%d)\n",
 	    MACHINES);
     close(accept(soc_princ, (struct sockaddr *) &lui, &l));
     return;
