@@ -1,0 +1,119 @@
+head	1.3;
+access
+	jo;
+symbols;
+locks
+	syl:1.3; strict;
+comment	@ * @;
+
+
+1.3
+date	96.06.24.13.21.16;	author syl;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	96.06.21.17.55.29;	author syl;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	96.06.21.15.45.47;	author syl;	state Exp;
+branches;
+next	;
+
+
+desc
+@Contient la liste et le nombre de machines utilisables par le Maitre.
+@
+
+
+1.3
+log
+@Ben, j'ai rajoute des machines, pourquoi ?
+@
+text
+@#define MACHINES 34
+
+char machines[][100]={ 
+"holiday",
+"moloch",
+"beorn",
+/* "nostromo", */
+"onouga",
+/* "darou", */
+/* "kremlin", */
+"zep",
+
+/* "sequoia", */
+"tabac",
+"tilleul",
+"thuya",
+"troene",
+"theier",
+"tamarin",
+"tagette",
+"thym",
+"tremble",
+
+/* "clipper", */
+"drakkar",
+"bireme",
+"chaland",
+"jonque",
+
+"aviso", 
+"triere",
+
+"voilier",
+
+/* "vedette",
+"gondole", */
+
+/* "zep.minet.net", */
+
+"aladin.int-evry.fr",
+"157.159.15.61",
+"157.159.15.62",
+"157.159.15.63",
+"157.159.15.64",
+"157.159.15.65",
+"157.159.15.66",
+"157.159.15.67",
+"157.159.15.68",
+"157.159.15.69",
+"157.159.15.70",
+"157.159.15.71",
+"157.159.15.72",
+};
+@
+
+
+1.2
+log
+@Test interne au rezo.
+@
+text
+@d1 1
+a1 1
+#define MACHINES 5 /* 18  /* 37 */
+d7 1
+a7 1
+"nostromo",
+d11 1
+d30 4
+a33 2
+/* "aviso", 
+"triere", */
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d1 1
+a1 1
+#define MACHINES 18  /* 37 */
+@
