@@ -1,9 +1,3 @@
-#### Makefile automagique ####
-
-CC = gcc
-CFLAGS =  -DRG=21 -DRG_MASTER=5 -UDEBUG -DDBG_LVL=3 -O6 -Wall -pedantic -mpentium
-LDFLAGS = 
-
 ###########################################
 
 all:	apart master slave

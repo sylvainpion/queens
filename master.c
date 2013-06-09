@@ -2,7 +2,7 @@
 		 * Maitre du calcul du probleme des N reines *
 		 *********************************************/
 
-/* $Id: master.c,v 1.12 1996/06/25 00:52:18 jo Exp jo $ */
+/* $Id: master.c,v 1.13 1996/06/25 16:56:00 jo Exp syl $ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,26 +20,22 @@
 #include "algo.h"    /* juste pour RG et RG_FULL */
 #include "rezo.h"
 
-#define DBG_LVL 3
-/* 0 -> rien, 1-> arrivee,depart de machines, 2-> fin/reveils
-3->avancement du calcul */
-
-
-#ifndef MACHINES
-  #define MACHINES 150
+#ifndef DBG_LVL
+#define DBG_LVL 3    /* 0 -> rien
+                        1 -> arrivees/depart de machines
+                        2 -> fin/reveils
+                        3 -> avancement du calcul */
 #endif
 
 #ifndef RG_MASTER
   #define RG_MASTER (RG/5)
 #endif
 
-/* nb max de machines */
-#ifndef MACHINES
-  #define MACHINES 100
+#ifndef MACHINES        /* nb max de machines */
+  #define MACHINES 200
 #endif
 
 #define MODULO 16777216
-
 
 /* Pour les decomptes */
 static unsigned int nb0 = 0;
@@ -49,16 +45,16 @@ static unsigned int nb2 = 0;
 /* gestion des machines et des calculs a faire... */
 static int niveau = 1;
 static int etat[50][4];
-static int nombre_machines=0;
+static int nombre_machines = 0;
 static unsigned int calcul_en_cours[MACHINES][3];
-static unsigned int calcul_a_refaire[MACHINES*10][3];
+static unsigned int calcul_a_refaire[MACHINES][3];
 static int calcul_bidon[3];
 static int to_redo = 0;
 
 static int fini = 0;
 static int fini_count = 0;
 
-/* les info sur les machines */
+/* les infos sur les machines */
 int fd[MACHINES];
 int soc_princ;
 int ok[MACHINES];
@@ -69,8 +65,7 @@ char machines[MACHINES][100];
 static void handle_pipe(int nosig)
 {
 #if DBG_LVL > 0
-  fprintf(stderr," Un pb de socket ... :-((( \n");
-  fprintf(stderr, " J'ignore le signal... \n");
+  fprintf(stdout,"LVL1: Un pb de socket, j'ignore le signal... \n");
 #endif
   signal(SIGPIPE,handle_pipe);
 }
@@ -119,17 +114,27 @@ void mort_client(int ma)
 {
      int i;
 #if DBG_LVL > 0
-     perror("Ecriture :");
+     perror("LVL1: Ecriture :");
 #endif
      ok[ma]=0;
      nombre_machines --;
      close(fd[ma]);
      /* pour faire recommencer le meme... */
 #if DBG_LVL >0
-     printf ("%s nous a quittee..., il reste %d machines.\n",machines[ma],
-       nombre_machines);
+     printf ("LVL1: %s nous a quittee..., il reste %d machines.\n",
+             machines[ma], nombre_machines);
 #endif
-     /* on stoque le message a renvoyer a une machine saine... */
+
+    if (fini_machine[ma])
+    {
+#if DBG_LVL >1
+       printf ("LVL2: pas de relance du calcul, il etait fini.\n");
+#endif
+       fini_machine[ma]=0; fini_count --;
+       return;
+    }
+
+     /* on stock le message a renvoyer a une machine saine... */
      memcpy(calcul_a_refaire[to_redo],calcul_en_cours[ma],3*sizeof(int));
      to_redo++;
      for (i=0;i<MACHINES;i++)
@@ -140,17 +145,17 @@ void mort_client(int ma)
             fini_count--;
             fini_machine[i]=0;
 #if DBG_LVL > 0
-            fprintf(stderr,"Je reveille %s...\n",machines[i]);
+            fprintf(stdout,"LVL1: Je reveille %s...\n",machines[i]);
 #endif
 #if DBG_LVL > 1
-            printf("Je reveille %s...\n",machines[i]);
+            printf("LVL2: Je reveille %s...\n",machines[i]);
 #endif
             memcpy(calcul_en_cours[i],calcul_bidon,3*sizeof(int));
             if(write(fd[i],calcul_en_cours[i],
-              3*sizeof(int)) !=3*sizeof(int))
+		     3*sizeof(int)) !=3*sizeof(int))
             {
 #if DBG_LVL > 0
-               fprintf(stderr,"Ca va mal\n");
+               fprintf(stdout,"LVL1: Ca va mal\n");
 #endif
                mort_client(i); /* la on deprime un peu... */
             }
@@ -172,7 +177,7 @@ void grand_pipo (int ma)
     fini_count++;
     fini_machine[ma]=1;
 #if DBG_LVL > 1
-    printf ("             %s a termine.\n", machines[ma]);
+    printf ("LVL2: %s a termine.\n", machines[ma]);
 #endif
     return;
   };
@@ -184,7 +189,7 @@ void grand_pipo (int ma)
   if (res == -1)
   {fini_machine[ma]=1;fini = 1;fini_count=1;
 #if DBG_LVL > 1
-    printf ("             %s a termine.\n", machines[ma]);
+    printf ("LVL2: %s a termine.\n", machines[ma]);
 #endif
     return;
   }
@@ -200,7 +205,7 @@ void grand_pipo (int ma)
      mort_client(ma);
   }
 #if DBG_LVL > 2
-  printf ("(%2d) %d %d %d %d %d %d %d\n", ma, etat[1][3], etat[2][3], 
+  printf ("LVL3: (%2d) %d %d %d %d %d %d %d\n", ma, etat[1][3], etat[2][3], 
           etat[3][3], etat[4][3], etat[5][3], etat[6][3], etat[7][3]);
 #endif
 
@@ -250,13 +255,13 @@ void itere_pipo ()
 	       nb1 = nb1 % MODULO;
 	       if (to_redo >0)
 	       {
-#if DBG_LVL > 1
-                  printf("Je relance un calcul... \n");
+#if DBG_LVL > 2
+                  printf("LVL3: Je relance un calcul... \n");
 #endif
 	          memcpy(calcul_en_cours[i],calcul_a_refaire[--to_redo],
-		    3 * sizeof(unsigned int));
+			 3 * sizeof(unsigned int));
 		  if(write(fd[i],calcul_en_cours[i],
-		     3*sizeof(unsigned int)) != 3 * sizeof(unsigned int))
+			   3*sizeof(unsigned int)) != 3 * sizeof(unsigned int))
 		  {
 		     mort_client(i);
 		  }
@@ -292,43 +297,50 @@ void accept_connection()
   }
   if (ok[numero])
   {
-    fprintf(stderr,"J'ai atteint le nombre maximum de clients... (%d) \n",
-       MACHINES);
+    fprintf(stdout,"LVL0: J'ai atteint le nombre maximum de clients... (%d) 
+\n",
+	    MACHINES);
     close(accept(soc_princ, (struct sockaddr *) &lui, &l));
     return;
   }
   fd[numero]= accept(soc_princ, (struct sockaddr *) &lui, &l);
   if (setsockopt (fd[numero],SOL_SOCKET,SO_KEEPALIVE,&un,sizeof(int)) < 0) {
-       perror ("setsockopt");
-       return;
+    perror ("setsockopt");
+    return;
   };
   luient = gethostbyaddr ((char *) & (lui.sin_addr.s_addr),
-          sizeof(lui.sin_addr.s_addr),AF_INET);
+			  sizeof(lui.sin_addr.s_addr),AF_INET);
 	     
   if(!luient)
   {
-     fprintf(stderr,"Je ne sais pas qui se connecte...\n");
-     strncpy(machines[numero],"???",sizeof(machines[numero]));
+#if DBG_LVL>0
+     fprintf(stdout,"LVL1: Je ne sais pas qui se connecte...\n");
+#endif
+     sprintf(machines[numero],"%u.%u.%u.%u",
+	     (unsigned char) lui.sin_addr.s_addr,
+	     *( ((unsigned char *) & lui.sin_addr.s_addr) + 1),
+	     *( ((unsigned char *) & lui.sin_addr.s_addr) + 2),
+	     *( ((unsigned char *) & lui.sin_addr.s_addr) + 3));
   } else
   {
-#if DBG_LVL > 0
-     printf("Connexion de %s\n",luient->h_name);
-#endif
      strncpy(machines[numero],luient->h_name,sizeof(machines[numero]));
   }
-  {
-       unsigned short int sonrg;
-       read (fd[numero], &sonrg, sizeof(unsigned short int));
-       if (ntohs(sonrg) != RG)
-       {
-         fprintf(stderr," Le client sur %s a un RG de %d et moi de %d\n",
-	         machines[numero], ntohs (sonrg), RG);
 #if DBG_LVL > 0
-         printf(" Refusee... Mauvais RG\n");
+  printf("LVL1: Connexion de %s\n",machines[numero]);
 #endif
-         close(fd[numero]);
-         return;
-       }
+  {
+    unsigned short int sonrg;
+    read (fd[numero], &sonrg, sizeof(unsigned short int));
+    if (ntohs(sonrg) != RG)
+      {
+	fprintf(stdout,"LVL0: Le client sur %s a un RG de %d et moi de %d\n",
+		machines[numero], ntohs (sonrg), RG);
+#if DBG_LVL > 0
+	printf("LVL1: Refusee... Mauvais RG\n");
+#endif
+	close(fd[numero]);
+	return;
+      }
   };
 
   ok[numero]=1;
@@ -350,14 +362,14 @@ void init_rezo()
   myaddr.sin_family = AF_INET;
 
   if ((soc_princ = socket (PF_INET, SOCK_STREAM, 0)) < 0) {
-      perror ("socket");
-      exit(1);
+    perror ("socket");
+    exit(1);
   };
   
 
   if (setsockopt (soc_princ,SOL_SOCKET,SO_REUSEADDR,&un,sizeof(int))< 0) {
-       perror ("setsockopt");
-       exit(1);
+    perror ("setsockopt");
+    exit(1);
   };
 
   if (bind (soc_princ, (struct sockaddr *) &myaddr, sizeof (myaddr)) < 0) {

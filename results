@@ -1,0 +1,96 @@
+1 reines => 0 solutions
+2 reines => 0 solutions
+3 reines => 0 solutions
+4 reines => 2 solutions
+5 reines => 10 solutions
+6 reines => 4 solutions
+7 reines => 40 solutions
+8 reines => 92 solutions
+9 reines => 352 solutions
+10 reines => 724 solutions
+11 reines => 2680 solutions
+12 reines => 14200 solutions
+13 reines => 73712 solutions
+14 reines => 365596 solutions
+15 reines => 2279184 solutions
+16 reines => 14772512 solutions
+17 reines => 95815104 solutions
+18 reines => 666090624 solutions
+19 reines => 4968057848 solutions (673090552 + 2^32)
+20 reines => 39029188884 solutions (d'apres sequences@machin.choz)
+
+	13: (holiday)
+
+13 reines => 73712 solutions
+0.71user 0.00system 0:01.56elapsed 45%CPU
+
+	14: (holiday) (*5.845)
+
+14 reines => 365596 solutions
+4.15user 0.01system 0:04.26elapsed 97%CPU
+
+	15: (holiday) (*6.311)
+
+15 reines => 2279184 solutions
+25.83user 0.01system 0:53.61elapsed 48%CPU
+
+	16: (holiday) (*6.704)
+
+16 reines => 14772512 solutions
+175.59user 0.04system 3:00.84elapsed 97%CPU
+
+	17: (holiday) (*7.050)
+
+17 reines => 95815104 solutions
+1237.89user 0.12system 21:18.77elapsed 96%CPU
+
+sur salle S+T, nostromo, moloch, onouga, holiday: [17/15]
+
+17 reines -> 2 * (736 + (731 * 65536 )) sols
+0.03user 0.13system 3:05.45elapsed 0%CPU
+
+idem avec [17/14], parce qu'on attend pas a la fin les calculettes.
+
+17 reines -> 2 * (736 + (731 * 65536 )) sols
+0.16user 0.72system 2:33.52elapsed 0%CPU
+
+
+	18: (holiday) (*7.501)
+
+18 reines => 666090624 solutions
+9285.58user 4.97system 2:43:31elapsed 94%CPU
+
+[18/15] sur les memes 17 machines:
+
+18 reines -> 2 * (56896 + (5081 * 65536 )) sols
+0.16user 0.95system 18:35.95elapsed 0%CPU
+
+[18/15] sur 33 machines:
+
+18 reines -> 2 * (56896 + (5081 * 65536 )) sols
+0.19user 1.06system 12:01.91elapsed 0%CPU
+
+
+	19: (holiday) (*7.698)
+
+19 reines => 4968057848 (673090552+2^32) solutions
+71476.59user 8.44system 20:20:18elapsed 38%CPU
+(20h51)                                 ^^^^^^ FUMÉ
+
+[19/15] sur 33 machines:
+19 reines -> 2 * (17916 + (37903 * 65536 )) sols
+3.02user 17.27system 1:27:10elapsed 0%CPU
+
+
+[20/15] sur 37 machines:
+
+20 reines -> 2 * (5258 + (297769 * 65536 )) sols
+39.73user 246.01system 12:20:19elapsed 0%CPU
+
+
+
+Estimations:
+------------
+
+20: estime pour holiday: 7  j  (*8)
+21: ...................: 58 j  (*8.2)

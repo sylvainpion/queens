@@ -1,0 +1,26 @@
+head	1.1;
+access
+	jo;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.1
+date	96.06.24.13.19.40;	author syl;	state Exp;
+branches;
+next	;
+
+
+desc
+@header de apart.c
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@/* Gag, y'a rien la */
+@

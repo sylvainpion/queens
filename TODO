@@ -1,0 +1,2 @@
+- gestion des pannes pour le serveur, mais bon, pour le moment, suffit de 
+  prendre une machine "safe". (on peut toujours faire des logs, au cas ou)

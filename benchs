@@ -1,0 +1,20 @@
+nom		archi, freq	options de gcc		temps en sec (RG=15)
+----------------------------------------------------------------------------
+
+holiday		pentium, 166		-O6 -mpentium		28.19
+nostromo	486, 66			-O6 -m486		112.98
+
+beorn		Alpha (pc), 166		-O6			76
+		(d'apres `date`, `time` etant completement fume)
+
+aladin		Bi-Alpha, 275		-O6			30.91
+alphaxx		Alpha, 100		-O6			82.54
+
+bireme		Sparc5, ??		-O6			84.15
+drakkar		Sparc20, 50 ??		-O6			74.07
+clipper		Bi-SuperSparc, 50 ???	-O6			40.50
+sequoia		Sparc20, 75		-O6			38.96
+tabac		Sparc4, ??		-O6			57.69
+
+prao		Bouze			-O6			235.33
+brick		Bouze evoluee		-O6			134.88

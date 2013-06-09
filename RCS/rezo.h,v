@@ -1,0 +1,28 @@
+head	1.1;
+access
+	jo;
+symbols;
+locks
+	syl:1.1; strict;
+comment	@ * @;
+
+
+1.1
+date	96.06.21.15.45.47;	author syl;	state Exp;
+branches;
+next	;
+
+
+desc
+@Ben, un ptit header pour le rezo.
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@#define PORT 8888
+
+@

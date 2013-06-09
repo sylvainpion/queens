@@ -16,20 +16,22 @@
 #include "algo.h"
 #include "rezo.h"
 
-char *maitre="holiday";
+char *maitre_default=MAITRE;
 
 int fd;
 struct sockaddr_in saddr;
 struct sockaddr_in myaddr;
 
-int main ()
+int main (int argc, char **argv)
 {
-  int un=1;
-  unsigned short rgpt = htons(RG);
+  int un = 1;
+  unsigned short rgpt = htons (RG);
   unsigned int buf[10];
   struct hostent *hp;
+  char *maitre = (argc > 1) ? (argv[1]) : (maitre_default);
+  int port = (argc > 2) ? (atoi(argv[2])) : (PORT);
 
-  memset (&saddr, 0, sizeof (struct sockaddr_in));
+  memset (&saddr,  0, sizeof (struct sockaddr_in));
   memset (&myaddr, 0, sizeof (struct sockaddr_in));
 
   if ((hp = gethostbyname (maitre)) == NULL) {
@@ -42,10 +44,10 @@ int main ()
   else
     saddr.sin_addr = *(struct in_addr *) (hp->h_addr_list[0]);
 
-  saddr.sin_port = htons(PORT);
+  saddr.sin_port = htons (port);
   saddr.sin_family = AF_INET;
 
-  myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+  myaddr.sin_addr.s_addr = htonl (INADDR_ANY);
   myaddr.sin_port = 0;
   myaddr.sin_family = AF_INET;
 
@@ -64,7 +66,6 @@ int main ()
     perror ("Connection...");
     exit(1);
   }
-
 
   write (fd, &rgpt, sizeof (unsigned short int));
 
